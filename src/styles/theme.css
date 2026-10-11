@@ -1,0 +1,40 @@
+/* ==========================================================================
+   Colors and type. Every color in the UI is one of these tokens (mapped to
+   Tailwind utilities in index.css). Dark "control room" look only.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  --app-font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --app-font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Consolas', monospace;
+
+  /* Surfaces */
+  --c-bg: #07090d;
+  --c-surface: #0d1117;
+  --c-surface-2: #131923;
+  --c-surface-3: #1b2330;
+  --c-border: #1f2835;
+  --c-border-strong: #2d3848;
+
+  /* Text */
+  --c-fg: #e8edf4;
+  --c-fg-muted: #93a0b4;
+  --c-fg-subtle: #5f6b7e;
+
+  /* Accent (camera HUD) */
+  --c-accent: #22d3ee;
+  --c-accent-strong: #06b6d4;
+  --c-accent-fg: #04141a;
+
+  /* Table states */
+  --c-occupied: #fb7185;
+  --c-arriving: #fbbf24;
+  --c-empty: #34d399;
+
+  /* Feedback */
+  --c-live: #34d399;
+  --c-warning: #fbbf24;
+  --c-warning-fg: #1f1503;
+  --c-danger: #f87171;
+}
