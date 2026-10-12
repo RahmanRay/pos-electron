@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { app, BrowserWindow, Menu } from 'electron';
 import { APP_CONFIG } from '@/config/app.config';
-import { DEV_SERVER_URL, RENDERER_INDEX_PATH } from './paths';
+import { DEV_SERVER_URL, PRELOAD_PATH, RENDERER_INDEX_PATH } from './paths';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -33,6 +33,7 @@ export function createMainWindow(): BrowserWindow {
     autoHideMenuBar: true,
     icon: resolveWindowIcon(),
     webPreferences: {
+      preload: PRELOAD_PATH,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -67,7 +68,7 @@ export function createMainWindow(): BrowserWindow {
     }
   });
 
-  // A crashed renderer is reloaded (the demo keeps no state worth saving).
+  // A crashed renderer is reloaded; the main process owns camera settings.
   window.webContents.on('render-process-gone', (_event, details) => {
     console.error(`Renderer process gone: ${details.reason} (exit code ${details.exitCode})`);
     if (details.reason !== 'clean-exit' && !window.isDestroyed()) {

@@ -56,12 +56,18 @@ test('renderer cannot access Node.js or Electron internals', async () => {
   });
 });
 
-test('no privileged API is exposed to the page (no preload bridge)', async () => {
-  const exposed = await launched.window.evaluate(() => 'electronAPI' in globalThis);
-  expect(exposed).toBe(false);
+test('only the fixed camera bridge is exposed, without generic IPC or filesystem access', async () => {
+  const exposed = await launched.window.evaluate(() => ({
+    legacyBridge: 'electronAPI' in globalThis,
+    cameraMethods: Object.keys(window.cameraAPI ?? {}).sort(),
+  }));
+  expect(exposed).toEqual({
+    legacyBridge: false,
+    cameraMethods: ['connect', 'disconnect', 'getSettings', 'getStatus', 'onFrame', 'onStatus', 'saveSettings'],
+  });
 });
 
-test('camera and microphone permissions are denied (the demo only plays a local file)', async () => {
+test('browser device permissions are denied (RTSP decoding belongs to main)', async () => {
   const denied = await launched.window.evaluate(async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ video: true });
@@ -73,7 +79,7 @@ test('camera and microphone permissions are denied (the demo only plays a local 
   expect(denied).toBe(true);
 });
 
-test('remote network requests are blocked (offline-only application)', async () => {
+test('renderer network requests are blocked (RTSP networking belongs to main)', async () => {
   const blocked = await launched.window.evaluate(async () => {
     try {
       await fetch('https://example.com/');

@@ -9,7 +9,7 @@ directories:
   buildResources: build
 
 # Only the compiled application is packaged (no runtime dependencies).
-# dist/ includes public/demo/camera when `npm run camera-demo` was run before the build.
+# dist/ includes the local detection model when `npm run setup-model` was run before the build.
 files:
   - dist/**/*
   - dist-electron/**/*
@@ -57,5 +57,5 @@ linux:
         - x64
   icon: build/icon.png
   category: Utility
-  synopsis: Offline restaurant table-occupancy camera demo
+  synopsis: Local RTSP restaurant table-occupancy monitor
   artifactName: ${productName}-${version}.${ext}

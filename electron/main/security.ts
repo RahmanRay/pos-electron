@@ -52,8 +52,8 @@ function isAllowedRequest(url: string): boolean {
 /**
  * Session-wide protections:
  * - deny every permission request (real camera, microphone, geolocation…):
- *   the demo plays a local file and never asks for a device
- * - block all network requests to remote hosts (offline-only application)
+ *   RTSP frames arrive through the restricted main-process bridge
+ * - block renderer network requests to remote hosts
  * - apply a CSP header to dev-server responses
  */
 export function hardenSession(): void {

@@ -1,6 +1,6 @@
 import { Cctv } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CameraPage } from '@/components/camera/CameraPage';
+import { LiveCameraPage } from '@/components/camera/LiveCameraPage';
 import { APP_CONFIG } from '@/config/app.config';
 import { TEXT } from '@/text';
 import { formatClock } from '@/utils/format';
@@ -19,6 +19,7 @@ function Clock() {
 }
 
 export default function App() {
+  const liveAvailable = Boolean(window.cameraAPI);
   return (
     <div className="flex h-full flex-col bg-bg bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgb(34_211_238/0.08),transparent)] text-fg">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4 sm:px-5">
@@ -28,16 +29,13 @@ export default function App() {
         <div className="min-w-0 flex-1 leading-tight">
           <h1 className="truncate font-bold tracking-tight">
             {APP_CONFIG.name}
-            <span className="ms-2 rounded-md bg-warning px-1.5 py-0.5 align-middle text-[0.625rem] font-bold tracking-wider text-warning-fg">
-              {TEXT.demo}
-            </span>
           </h1>
           <p className="hidden truncate text-xs text-fg-subtle sm:block">{TEXT.appSubtitle}</p>
         </div>
-        <Clock />
+        <span className="hidden sm:contents"><Clock /></span>
       </header>
       <main className="min-h-0 flex-1 overflow-y-auto lg:overflow-hidden">
-        <CameraPage />
+        {liveAvailable ? <LiveCameraPage /> : <div className="m-4 rounded-2xl border border-border bg-surface p-6 text-sm text-fg-muted" role="alert">{TEXT.electronRequired}</div>}
       </main>
     </div>
   );

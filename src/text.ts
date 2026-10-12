@@ -1,25 +1,65 @@
-import type { FeedStatus, OccupancyEventKind, ZoneStatus } from '@/types';
+import type { OccupancyEventKind, ZoneStatus } from '@/types';
+import type { LiveCameraStatus } from '@/types/liveCamera';
 
 /* All UI text (Azerbaijani, the only UI language). */
 export const TEXT = {
   appSubtitle: 'Masa doluluğu monitoru',
-  demo: 'DEMO',
-  cameraName: 'KAM-01 · Zal',
-  sourceBadge: 'Lokal video · time-lapse',
-  speed: (rate: string) => `Sürət ${rate}×`,
-  session: (count: number) => `Sessiya #${count}`,
+  liveCamera: 'Real kamera',
+  electronRequired: 'Real kameraya qoşulmaq üçün tətbiqi Electron pəncərəsində açın: npm run start.',
+  cameraConnection: 'Kamera bağlantısı',
+  cameraServiceError: 'Kamera xidmətinə giriş alınmadı.',
+  cameraFrameError: 'Kamera kadrı göstərilə bilmədi. Növbəti kadr gözlənilir.',
+  cameraSettingsLoadError: 'Kamera parametrləri yüklənmədi. Tətbiqi yenidən açın.',
+  cameraActionError: 'Əməliyyat alınmadı. IP, RTSP portu, axın yolu və şifrəni yoxlayın.',
+  cameraDisconnectError: 'Bağlantını dayandırmaq alınmadı.',
+  cameraZonesSaveError: 'Masa zonaları saxlanılmadı. ID-ləri və zona ölçülərini yoxlayın.',
+  cameraDuplicateZone: 'Hər masa üçün fərqli, boş olmayan ID yazın.',
+  cameraSettingsSaved: 'Parametrlər saxlanıldı.',
+  cameraZonesSaved: 'Masa zonaları saxlanıldı; doluluq izləməsi yenidən başladı.',
+  cameraPortHint: '8000 portunu RTSP ilə qarışdırmayın. Canlı axın üçün əvvəlcə 554 portunu sınayın.',
+  cameraPasswordHint: 'Şifrəni yalnız bu sahəyə yazın. Saxlanmış şifrəni saxlamaq üçün sahəni boş buraxın.',
+  cameraFields: {
+    name: 'Kameranın adı',
+    host: 'IP ünvanı',
+    port: 'RTSP portu',
+    username: 'İstifadəçi adı',
+    password: 'Şifrə / kameranın doğrulama kodu',
+    streamPath: 'RTSP axın yolu',
+    savedPassword: 'Saxlanıb; dəyişmək üçün yazın',
+    enterPassword: 'Etiketdəki kodu burada daxil edin',
+  },
+  cameraSave: 'Saxla',
+  cameraConnect: 'Saxla və qoşul',
+  cameraDisconnect: 'Ayır',
+  waiting: 'Gözləyin…',
+  liveImage: 'Kameradan alınan canlı görüntü',
+  tableId: 'Masa ID-si',
+  tableIdPlaceholder: 'Məsələn: 1',
+  drawZone: 'Zona çək',
+  cancelDrawing: 'Çəkməni ləğv et',
+  drawingHint: 'Görüntüdə masanın oturma sahəsini siçanla düzbucaqlı kimi çəkin.',
+  drawZoneLabel: 'Masa zonasını çəkin',
+  savedZones: 'Saxlanılan masa zonaları',
+  deleteZone: (label: string) => `Masa ${label} zonasını sil`,
+  liveEventsHint: 'Vaxtlar aktiv müşahidənin başlanğıcından hesablanır.',
+  connectHint: 'Parametrləri və kameranın şifrəsini daxil edib “Saxla və qoşul” düyməsinə basın.',
+  liveStatus: {
+    idle: 'Qoşulmayıb',
+    connecting: 'Qoşulur…',
+    live: 'Canlı görüntü',
+    offline: 'Kamera offline',
+    error: 'Bağlantı xətası',
+  } satisfies Record<LiveCameraStatus['state'], string>,
+  liveStale: 'Son görüntü saxlanılıb. Masaların cari vəziyyəti təsdiqlənmir; yeni kadr gələnədək taymerlər dondurulub.',
+  liveTimingHint: 'Taymer müşahidə olunan real saniyələri sayır. Kamera offline olduqda və tətbiq bağlı olduqda sayım dayanır; saxlanmış müddət yenidən açıldıqda bərpa olunur. İnsan aşkarlanması təxminidir.',
+  zoneEditor: 'Masa zonaları',
+  zoneEditorHint: 'Hər masanın oturma sahəsini çəkin və ona unikal masa ID-si verin. Zonaları dəyişəndə izləmə sıfırlanır.',
+  noLiveZones: 'Canlı görüntü doluluq izləməsindən ayrıdır: masa zonaları çəkilməyənədək heç bir masa üçün boş/dolu statusu hesablanmır.',
+  unconfirmed: 'Təsdiqlənmir',
+  lastKnown: 'Son məlum vəziyyət',
   people: (count: number) => `${count} nəfər`,
   table: (label: string) => `Masa ${label}`,
   seconds: (value: string) => `${value} san`,
-
-  feed: {
-    loading: 'Yüklənir',
-    live: 'Canlı (simulyasiya)',
-    paused: 'Pauza',
-    stalled: 'Axın dayanıb',
-    missing: 'Video tapılmadı',
-    error: 'Video xətası',
-  } satisfies Record<FeedStatus, string>,
 
   status: {
     empty: 'Boş',
@@ -27,20 +67,8 @@ export const TEXT = {
     occupied: 'Dolu',
   } satisfies Record<ZoneStatus, string>,
 
-  stalledTitle: 'Axın dayanıb',
-  stalledHint: (seconds: number) =>
-    `${seconds} saniyədən çoxdur yeni kadr yoxdur. Masalar son kadrda dondurulub və axın bərpa olunana qədər etibarlı deyil.`,
-  missingHint: 'Demo videonu və modeli yükləmək üçün bir dəfə "npm run camera-demo" işlədin (internet lazımdır).',
-
   detectorLoading: 'İnsan aşkarlanması yüklənir…',
   detectorError: 'İnsan aşkarlanması işləmir: masalar yenilənmir.',
-  stallTestRunning: 'Test: axının dayanması simulyasiya olunur',
-
-  pause: 'Pauza',
-  resume: 'Davam et',
-  freezeTest: 'Axını dondur (test)',
-  endFreezeTest: 'Testi bitir',
-  restart: 'Sessiyanı sıfırla',
 
   occupancy: 'Doluluq',
   occupiedOf: (occupied: number, total: number) => `${occupied}/${total} masa dolu`,
@@ -49,24 +77,14 @@ export const TEXT = {
   tables: 'Masalar',
   seated: 'Oturur',
   hidden: 'Görünmür: qısa örtülmə?',
-  timeline: 'Zaman xətti',
-  timelineHint: 'Bu sessiyada hər masanın vəziyyəti (video vaxtı)',
   events: 'Hadisələr',
-  noEvents: 'Bu sessiyada hələ hadisə yoxdur.',
+  noEvents: 'Hələ hadisə yoxdur.',
   event: (kind: OccupancyEventKind, label: string, duration: string) =>
     ({
       seated: `Masa ${label} doldu`,
       left: `Masa ${label} boşaldı · ${duration} oturdu`,
       passedBy: `Masa ${label} yanından keçən · ${duration}`,
     })[kind],
-
-  source: 'Mənbə',
-  sourceWhy: 'Sahibinin icazə ilə açıq yayımladığı restoran kamerası tapılmadı, ona görə lisenziyalı stok video istifadə olunur.',
-  notes: [
-    'Video time-lapse-dir və yavaşladılıb: taymerlər real dəqiqə yox, video saniyəsi sayır.',
-    'Video yenidən başlayanda yeni sessiya açılır və hər şey sıfırlanır.',
-    'Heç nə saxlanılmır və göndərilmir: hər şey bu kompüterdə işləyir.',
-  ],
 
   errorTitle: 'Nəsə səhv getdi',
   reload: 'Yenilə',

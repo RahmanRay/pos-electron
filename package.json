@@ -2,7 +2,7 @@
   "name": "restaurant-camera",
   "productName": "Restoran Kamera",
   "version": "1.0.0",
-  "description": "Offline restaurant table-occupancy camera demo (Azerbaijani UI)",
+  "description": "Local RTSP camera and restaurant table-occupancy monitor (Azerbaijani UI)",
   "author": {
     "name": "Restoran Kamera"
   },
@@ -28,7 +28,7 @@
     "test": "vitest run",
     "test:e2e": "vite build && playwright test",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "camera-demo": "node scripts/camera-demo.mjs"
+    "setup-model": "node scripts/setup-model.mjs"
   },
   "dependencies": {},
   "devDependencies": {

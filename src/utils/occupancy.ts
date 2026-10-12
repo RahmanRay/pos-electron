@@ -74,18 +74,28 @@ function emptyTrack(zoneId: string): ZoneTrack {
 export interface OccupancyTracker {
   /** Feed one analysed frame. Media time going backwards (video loop) starts a new session first. */
   update(time: number, detections: readonly PersonDetection[]): OccupancySnapshot;
-  /** Forget everything and start a new demo session (video looped or was restarted). */
+  /** Forget observations and start a new tracking session. */
   restart(): OccupancySnapshot;
   snapshot(): OccupancySnapshot;
 }
 
-export function createOccupancyTracker(zones: readonly CameraZone[], options: OccupancyOptions): OccupancyTracker {
-  let session = 1;
-  let time = 0;
-  let lastTime: number | null = null;
-  let nextEventId = 1;
-  let events: OccupancyEvent[] = [];
-  let tracks = zones.map((zone) => emptyTrack(zone.id));
+export function createOccupancyTracker(
+  zones: readonly CameraZone[],
+  options: OccupancyOptions,
+  restored?: OccupancySnapshot,
+): OccupancyTracker {
+  let session = restored?.session ?? 1;
+  let time = restored?.time ?? 0;
+  let lastTime: number | null = restored?.time ?? null;
+  let events: OccupancyEvent[] = restored?.events.slice(-options.maxEvents) ?? [];
+  let nextEventId = Math.max(0, ...events.map((event) => event.id)) + 1;
+  let tracks = zones.map((zone) => {
+    const previous = restored?.zones.find((track) => track.zoneId === zone.id);
+    // Pending arrivals cannot be confirmed across a restart. An occupied
+    // visit keeps its measured duration, with fresh leave-grace on recovery.
+    if (previous?.status !== 'occupied') return emptyTrack(zone.id);
+    return { ...previous, people: 0, hidden: true, lastSeen: time, samples: [] } satisfies ZoneTrack;
+  });
 
   function addEvent(kind: OccupancyEventKind, zoneId: string, at: number, duration?: number) {
     events = [...events, { id: nextEventId++, kind, zoneId, at, duration, session }].slice(-options.maxEvents);

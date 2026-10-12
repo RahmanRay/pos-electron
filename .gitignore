@@ -13,4 +13,4 @@ Thumbs.db
 !.vscode/extensions.json
 .idea
 scripts/.image-cache
-public/demo
+public/models

@@ -5,7 +5,7 @@
 
    - Application name            → package.json ("productName")
    - Colors, fonts, radii        → src/styles/theme.css
-   - Demo video source and zones → src/data/cameraDemo.ts
+   - Camera source and zones     → encrypted main-process settings
    - UI text (Azerbaijani)       → src/text.ts
    ========================================================================== */
 
@@ -26,21 +26,19 @@ export const APP_CONFIG = {
   },
 
   /**
-   * Camera occupancy demo. Times are in seconds of video ("media time"); the
-   * demo clip is a time-lapse, so they are short.
+   * Live camera detection and occupancy settings. Times use wall-clock seconds.
    */
   camera: {
-    /** Folder (next to index.html) filled by `node scripts/camera-demo.mjs`. */
-    assetDir: 'demo/camera',
+    /** Folder (next to index.html) filled by `npm run setup-model`. */
+    assetDir: 'models/coco-ssd',
     /** Detection model (COCO-SSD, MobileNet v2) inside assetDir. */
-    modelPath: 'model/model.json',
-    /**
-     * Playback speed of the demo clip. The source is a time-lapse, so it is
-     * slowed down to look closer to a live camera. Timers count video seconds.
-     */
-    playbackRate: 0.5,
-    /** How often a frame is analysed. */
-    detectIntervalMs: 250,
+    modelPath: 'model.json',
+    /** Preview cadence is independent of the slower occupancy detector. */
+    previewFps: 25,
+    /** Maximum inference snapshot width; normalized zones stay unchanged. */
+    detectMaxWidth: 640,
+    /** How often a frame is analysed (preview continues between passes). */
+    detectIntervalMs: 333,
     /** Lowest detector score accepted as a person. */
     minScore: 0.3,
     /** Most boxes per frame. */

@@ -1,30 +1,21 @@
-// Camera demo assets (development-time only; the app itself never downloads anything).
+// Local person-detection model (setup-time only; the app never downloads at runtime).
 //
-//   node scripts/camera-demo.mjs          download into public/demo/camera (skips files that are already there)
-//   node scripts/camera-demo.mjs --force  download again
+//   node scripts/setup-model.mjs          verify/download into public/models/coco-ssd
+//   node scripts/setup-model.mjs --force  download again
 //
-// - Video: "Customers in a minimalist style restaurant" (Mixkit, Mixkit Stock Video Free License,
-//   https://mixkit.co/free-stock-video/customers-in-a-minimalist-style-restaurant-4385/).
-//   A time-lapse filmed from a fixed point above the tables. Not redistributed in this repository.
-// - Person detector: COCO-SSD MobileNet v2 converted for TensorFlow.js (Apache-2.0,
+// Person detector: COCO-SSD MobileNet v2 converted for TensorFlow.js (Apache-2.0,
 //   https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd).
 //
 // Every file is checked against the SHA-256 recorded below, so a changed upstream file is reported
-// instead of being used silently. public/demo is gitignored.
+// instead of being used silently. public/models is gitignored.
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outputDir = path.join(root, 'public', 'demo', 'camera');
+const outputDir = path.join(root, 'public', 'models', 'coco-ssd');
 const force = process.argv.includes('--force');
-
-const VIDEO = {
-  url: 'https://assets.mixkit.co/videos/4385/4385-720.mp4',
-  file: 'restaurant-4385-720.mp4',
-  sha256: '0949077e575842910401fda801dea0aaa47f259064ccd0d32d89f53652a45af3',
-};
 
 const MODEL_BASE = 'https://storage.googleapis.com/tfjs-models/savedmodel/ssd_mobilenet_v2/';
 const MODEL_FILES = {
@@ -55,7 +46,7 @@ async function download(url, target, expectedHash) {
     console.log(`ok       ${path.relative(root, target)}`);
     return;
   }
-  const response = await fetch(url, { headers: { 'User-Agent': 'RestaurantPOS-camera-demo/1.0' } });
+  const response = await fetch(url, { headers: { 'User-Agent': 'RestaurantCamera-model-setup/1.0' } });
   if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
   const buffer = Buffer.from(await response.arrayBuffer());
   const actual = sha256(buffer);
@@ -65,8 +56,7 @@ async function download(url, target, expectedHash) {
   console.log(`saved    ${path.relative(root, target)} (${(buffer.length / 1024 / 1024).toFixed(1)} MB)`);
 }
 
-await download(VIDEO.url, path.join(outputDir, VIDEO.file), VIDEO.sha256);
 for (const [file, hash] of Object.entries(MODEL_FILES)) {
-  await download(MODEL_BASE + file, path.join(outputDir, 'model', file), hash);
+  await download(MODEL_BASE + file, path.join(outputDir, file), hash);
 }
-console.log('Camera demo assets are ready. Open the Camera page in the app.');
+console.log('The local person-detection model is ready. Connect a real RTSP camera in the app.');

@@ -3,11 +3,11 @@ import { app, BrowserWindow, dialog } from 'electron';
 import { APP_CONFIG } from '@/config/app.config';
 import { hardenSession, hardenWebContentsCreation } from './security';
 import { createMainWindow, focusMainWindow, loadRenderer, setupApplicationMenu } from './windowManager';
+import { setupLiveCamera } from './liveCamera';
 
 /* ==========================================================================
-   Application lifecycle: Electron starts → session hardened (no network,
-   no permissions) → secure BrowserWindow → React camera page. The renderer
-   needs no privileged API, so there is no preload bridge and no IPC.
+   The renderer stays sandboxed and cannot access the network or secrets.
+   A narrow preload bridge receives camera frames from the main process.
    ========================================================================== */
 
 /**
@@ -25,6 +25,8 @@ function configureUserDataPath(): void {
 
 async function startApplication(): Promise<void> {
   hardenSession();
+  const stopCamera = setupLiveCamera();
+  app.on('before-quit', stopCamera);
   setupApplicationMenu();
   const window = createMainWindow();
   await loadRenderer(window);

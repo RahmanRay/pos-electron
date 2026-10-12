@@ -13,6 +13,9 @@ export function OccupancyGauge() {
   const zones = useCameraStore((state) => state.snapshot.zones);
   const people = useCameraStore((state) => state.detections.length);
   const inferenceMs = useCameraStore((state) => state.inferenceMs);
+  const feed = useCameraStore((state) => state.feed);
+  const detector = useCameraStore((state) => state.detector);
+  const stale = feed !== 'live' || detector !== 'ready';
   const total = zones.length || 1;
   const count = (status: ZoneStatus) => zones.filter((zone) => zone.status === status).length;
   const occupied = count('occupied');
@@ -25,6 +28,7 @@ export function OccupancyGauge() {
       <h2 id="gauge-title" className="mb-4 text-sm font-semibold text-fg-muted">
         {TEXT.occupancy}
       </h2>
+      {stale && zones.length > 0 && <p className="mb-3 text-xs text-warning">{TEXT.lastKnown} · {TEXT.unconfirmed}</p>}
       <div className="flex items-center gap-5">
         <div className="relative size-32 shrink-0">
           <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-hidden>
@@ -52,7 +56,7 @@ export function OccupancyGauge() {
             />
           </svg>
           <div className="absolute inset-0 grid place-content-center text-center">
-            <span className="text-3xl font-bold tabular-nums">{formatNumber((occupied / total) * 100)}%</span>
+            <span className="text-3xl font-bold tabular-nums">{zones.length === 0 || stale ? '—' : `${formatNumber((occupied / total) * 100)}%`}</span>
             <span className="text-[0.6875rem] text-fg-muted">{TEXT.occupiedOf(occupied, zones.length)}</span>
           </div>
         </div>

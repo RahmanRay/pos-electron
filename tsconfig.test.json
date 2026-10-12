@@ -24,5 +24,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "e2e/**/*.ts", "electron/types/**/*.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "e2e/**/*.ts", "electron/types/**/*.d.ts", "electron/main/liveCameraValidation.ts", "electron/main/mjpegParser.ts", "electron/frameDispatcher.ts"]
 }

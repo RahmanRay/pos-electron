@@ -1,5 +1,4 @@
-/* Camera occupancy demo. Nothing here is persisted and nothing here touches
-   orders, tables or payments: the camera page only observes. */
+/* Camera occupancy observations; credentials belong to the Electron main process. */
 
 /** A point in normalized video coordinates (0…1 on both axes, origin top-left). */
 export interface NormalizedPoint {
@@ -10,7 +9,7 @@ export interface NormalizedPoint {
 /** A table area drawn on the camera picture. */
 export interface CameraZone {
   id: string;
-  /** Short label painted on the video ("A", "B"…). */
+  /** Short table label painted on the camera image. */
   label: string;
   /** Polygon in normalized coordinates (at least 3 points). */
   polygon: readonly NormalizedPoint[];
@@ -37,9 +36,9 @@ export interface ZoneOccupancy {
   status: ZoneStatus;
   /** People currently seen in the zone (latest frame). */
   people: number;
-  /** Media time (s) when the current visit started (first frame with someone in the zone). */
+  /** Observed time (s) when the current visit started. */
   visitStart: number | null;
-  /** Media time (s) when someone was last seen in the zone. */
+  /** Observed time (s) when someone was last seen in the zone. */
   lastSeen: number | null;
   /** Occupied but nobody visible right now (short occlusion / missed detection). */
   hidden: boolean;
@@ -51,46 +50,34 @@ export interface OccupancyEvent {
   id: number;
   kind: OccupancyEventKind;
   zoneId: string;
-  /** Media time (s) of the event. */
+  /** Observed time (s) of the event. */
   at: number;
   /** Seconds the visit lasted (left / passedBy). */
   duration?: number;
-  /** Demo session (loop) the event belongs to. */
+  /** Tracking session the event belongs to. */
   session: number;
 }
 
 export interface OccupancySnapshot {
-  /** Increments every time the video loops; a new session starts from empty. */
+  /** Tracking session identifier. */
   session: number;
-  /** Latest media time processed (s). */
+  /** Latest observed time processed (s). */
   time: number;
   zones: ZoneOccupancy[];
   events: OccupancyEvent[];
 }
 
-export interface CameraSourceInfo {
-  title: string;
-  /** Public page of the source (for attribution / checking the license). */
-  pageUrl: string;
-  author: string;
-  license: string;
-  /** True when the footage is a time-lapse: timers then count video seconds, not real time. */
-  timeLapse: boolean;
-  /** Local file path served next to index.html. */
-  videoPath: string;
-}
-
-/** State of the simulated camera feed. */
+/** State of the camera feed. */
 export type FeedStatus = 'loading' | 'missing' | 'live' | 'paused' | 'stalled' | 'error';
 
-/** A stretch of video time during which a zone kept one status. */
+/** A stretch of observed time during which a zone kept one status. */
 export interface TimelineSegment {
   status: ZoneStatus;
   from: number;
   to: number;
 }
 
-/** Status history of every zone in one demo session. */
+/** Status history of every zone in one tracking session. */
 export interface OccupancyTimeline {
   session: number;
   zones: Record<string, TimelineSegment[]>;

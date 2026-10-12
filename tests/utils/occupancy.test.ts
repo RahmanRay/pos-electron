@@ -126,6 +126,24 @@ describe('occupancy tracker', () => {
     expect(zone(snapshot, 'a').status).toBe('occupied');
   });
 
+  it('restores a measured visit without treating time while closed as a new observation', () => {
+    const initial = createOccupancyTracker(ZONES, OPTIONS);
+    const before = feed(initial, 0, 5, [IN_A]);
+    const restored = createOccupancyTracker(ZONES, OPTIONS, before);
+    expect(zone(restored.snapshot(), 'a')).toMatchObject({ status: 'occupied', hidden: true, people: 0 });
+    const after = restored.update(5.25, [IN_A]);
+    expect(seatedSeconds(zone(after, 'a'), after.time)).toBe(5.25);
+    expect(after.events.filter((event) => event.kind === 'seated')).toHaveLength(1);
+  });
+
+  it('requires a fresh sustained arrival after restoring a pending visit', () => {
+    const initial = createOccupancyTracker(ZONES, OPTIONS);
+    const pending = feed(initial, 0, 1, [IN_A]);
+    const restored = createOccupancyTracker(ZONES, OPTIONS, pending);
+    expect(zone(restored.snapshot(), 'a').status).toBe('empty');
+    expect(zone(restored.update(1.25, [IN_A]), 'a').status).toBe('arriving');
+  });
+
   it('keeps only the newest events', () => {
     const tracker = createOccupancyTracker(ZONES, { ...OPTIONS, maxEvents: 3 });
     let t = 0;

@@ -102,6 +102,19 @@ export default defineConfig(({ command }) => {
             },
           },
         },
+        preload: {
+          input: 'electron/preload.ts',
+          vite: {
+            build: {
+              outDir: 'dist-electron/preload',
+              sourcemap: isServe,
+              minify: !isServe,
+              rolldownOptions: {
+                output: { format: 'cjs', entryFileNames: 'preload.cjs' },
+              },
+            },
+          },
+        },
       }),
     ],
   };
