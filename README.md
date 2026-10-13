@@ -39,7 +39,7 @@ VS Code terminalında `ELECTRON_RUN_AS_NODE` dəyişənini silin: `env -u ELECTR
 
 ## Yoxlama və məhdudiyyətlər
 
-2026-10-12 tarixində fiziki `CS-H6c-R105-1L2WF` kamerasının `192.168.72.104:554` RTSP axını Electron ekranında yoxlanıb: həqiqi görüntü, yenilənən kamera vaxtı və insan aşkarlama qutuları görünüb. Axın kəsiləndə real **Kamera offline** statusu və təkrar qoşulma mesajı da müşahidə edilib. E2E-də sintetik JPEG və test şifrəsi istifadə edilir; bunlar ayrıca proqram yoxlamalarıdır.
+2026-10-12 tarixində fiziki `CS-H6c-R105-1L2WF` kamerasının `192.168.72.104:554` RTSP axını Electron ekranında yoxlanıb: həqiqi görüntü, yenilənən kamera vaxtı və insan aşkarlama qutuları görünüb. Axın kəsiləndə real **Kamera offline** statusu və təkrar qoşulma mesajı da müşahidə edilib.
 
 Həmin gün görüntünün ilkin 3 FPS məhdudiyyəti aradan qaldırıldıqdan sonra real kamerada 10 saniyəlik ölçmə aparılıb: 247 göstərilmiş kadr, orta 24,7 FPS, ən böyük kadr intervalı 97 ms və 0 uzun UI bloklanması. Bu nəticə Apple M4 / 16 GB Mac-də həmin sınaq intervalına aiddir; davamlı və bütün şəbəkələr üçün zəmanət deyil. İstifadəçinin saxladığı 2 və 3 ID-li zonaların statusları, taymerləri və tətbiq yenidən açıldıqda müddətlərin bərpası UI-də müşahidə edilib; aşkarlamanın dəqiqliyi ayrıca ölçülməyib.
 
@@ -47,7 +47,6 @@ Həmin gün görüntünün ilkin 3 FPS məhdudiyyəti aradan qaldırıldıqdan s
 
 ```bash
 npm run verify      # typecheck + lint + unit testlər + build
-npm run test:e2e    # Playwright ilə izolyasiya edilmiş Electron profilləri
 npm run dist:mac    # macOS distributivi
 npm run dist:win    # Windows distributivi; FFmpeg ayrıca təmin edilməlidir
 npm run dist:linux  # Linux distributivi

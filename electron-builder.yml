@@ -1,6 +1,6 @@
 # electron-builder configuration — Windows (NSIS), macOS (DMG), Linux (AppImage).
 # The product name and version come from package.json ("productName", "version").
-# The icon is build/icon.png (regenerate with `npm run icons`).
+# The icon is build/icon.png.
 appId: com.restaurantcamera.demo
 copyright: Copyright © 2026 Restoran Kamera
 

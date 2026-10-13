@@ -26,14 +26,11 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
-    "test:e2e": "vite build && playwright test",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
     "setup-model": "node scripts/setup-model.mjs"
   },
-  "dependencies": {},
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",

@@ -13,9 +13,6 @@ export const APP_CONFIG = {
   /** From package.json → productName */
   name: __APP_NAME__,
 
-  /** Intl locale for numbers. */
-  locale: 'az-AZ',
-
   window: {
     width: 1366,
     height: 800,
@@ -51,8 +48,6 @@ export const APP_CONFIG = {
     passByGapSec: 0.6,
     /** An occupied table becomes empty after nobody was seen for this long (covers short occlusion). */
     leaveAfterSec: 2,
-    /** The feed counts as stalled when the picture has not moved for this long (wall clock). */
-    stallAfterMs: 2000,
     /** Most events kept in the on-screen log. */
     maxEvents: 40,
   },

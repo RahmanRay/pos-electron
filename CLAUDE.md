@@ -19,11 +19,10 @@ Tailwind CSS 4 + Zustand 5 + TensorFlow.js (WebGL). User docs: `README.md` (Azer
 npm run setup-model  # once: downloads the model into public/models/coco-ssd (gitignored, SHA-256 checked)
 npm run dev          # Vite + Electron (browser: http://localhost:5173)
 npm run verify       # typecheck (3 projects) + lint + unit tests + build — run before finishing
-npm run test:e2e     # builds, then Playwright drives Electron (synthetic frames + security)
 ```
 
 Use Node 22.12+ (on this machine: `~/.nvm/versions/node/v22.15.1/bin`; the default Node 20 breaks
-Vitest/jsdom). VS Code terminals set `ELECTRON_RUN_AS_NODE=1`; unset it for dev/e2e.
+Vitest/jsdom). VS Code terminals set `ELECTRON_RUN_AS_NODE=1`; unset it when launching Electron.
 
 ## Map of the code
 

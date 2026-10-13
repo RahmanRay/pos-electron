@@ -3,8 +3,6 @@ dist
 dist-electron
 release
 coverage
-test-results
-playwright-report
 *.log
 *.tsbuildinfo
 .DS_Store

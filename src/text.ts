@@ -75,7 +75,6 @@ export const TEXT = {
   peopleInFrame: 'Kadrda',
   inference: 'Aşkarlama',
   tables: 'Masalar',
-  seated: 'Oturur',
   hidden: 'Görünmür: qısa örtülmə?',
   events: 'Hadisələr',
   noEvents: 'Hələ hadisə yoxdur.',

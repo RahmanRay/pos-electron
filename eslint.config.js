@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'dist-electron', 'release', 'node_modules', 'coverage', 'test-results', 'playwright-report'],
+    ignores: ['dist', 'dist-electron', 'release', 'node_modules', 'coverage'],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -50,7 +50,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['tests/**/*.{ts,tsx}', 'e2e/**/*.ts'],
+    files: ['tests/**/*.{ts,tsx}'],
     rules: {
       'no-console': 'off',
     },
