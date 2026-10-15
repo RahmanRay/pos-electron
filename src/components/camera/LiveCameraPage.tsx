@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, Save, SquareDashedMousePointer, Unplug, X } from 'lucide-react';
+import { Link, Pencil, Save, SquareDashedMousePointer, Unplug, X } from 'lucide-react';
 import { useLiveCamera } from '@/hooks/useLiveCamera';
 import { useCameraStore } from '@/store/cameraStore';
 import { TEXT } from '@/text';
 import type { CameraZone, NormalizedPoint } from '@/types';
 import type { LiveCameraSettings, LiveCameraSettingsInput } from '@/types/liveCamera';
 import { rotateCameraZones } from '@/utils/cameraOrientation';
+import type { ZoneDrawingMode } from '@/utils/zoneGeometry';
 import { EventFeed } from './EventFeed';
 import { LiveCameraStage } from './LiveCameraStage';
 import { OccupancyGauge } from './OccupancyGauge';
@@ -23,6 +24,12 @@ function configure(settings: LiveCameraSettings) {
   useCameraStore.getState().configureLive(settings.zones, `${settings.host}:${settings.port}${settings.streamPath}|rotation=${settings.rotation}`);
 }
 
+function availableTableId(zones: readonly CameraZone[], start = 1): string {
+  let id = Number.isSafeInteger(start) && start > 0 ? start : 1;
+  while (zones.some((zone) => zone.id === String(id))) id = id >= Number.MAX_SAFE_INTEGER ? 1 : id + 1;
+  return String(id);
+}
+
 export function LiveCameraPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mounted = useRef(false);
@@ -35,8 +42,14 @@ export function LiveCameraPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [drawing, setDrawing] = useState(false);
+  const [drawingMode, setDrawingMode] = useState<ZoneDrawingMode>('polygon');
+  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [tableId, setTableId] = useState('1');
   const zones = useCameraStore((state) => state.zones);
+  const editingZone = zones.find((zone) => zone.id === editingZoneId) ?? null;
+  const editorActive = drawing || editingZone !== null;
+
+  const cancelEditing = () => { setDrawing(false); setEditingZoneId(null); };
 
   useEffect(() => {
     mounted.current = true;
@@ -48,6 +61,7 @@ export function LiveCameraPage() {
       const value = settings ?? DEFAULT_SETTINGS;
       setSaved(value);
       setDraft(value);
+      setTableId(availableTableId(value.zones));
       configure(value);
       setReady(true);
     }).catch(() => {
@@ -67,7 +81,7 @@ export function LiveCameraPage() {
     setBusy(true);
     setError('');
     setNotice('');
-    setDrawing(false);
+    cancelEditing();
     try {
       const orientationChanged = draft.rotation !== saved.rotation;
       const input: LiveCameraSettingsInput = {
@@ -99,7 +113,7 @@ export function LiveCameraPage() {
   const disconnect = async () => {
     try {
       await window.cameraAPI?.disconnect();
-      if (mounted.current) setDrawing(false);
+      if (mounted.current) cancelEditing();
     } catch {
       if (mounted.current) setError(TEXT.cameraDisconnectError);
     }
@@ -134,33 +148,63 @@ export function LiveCameraPage() {
       return;
     }
     if (busy) return;
-    setDrawing(false);
+    cancelEditing();
     void persistZones([...saved.zones, { id, label: id, polygon }]);
     const numericId = Number(id);
-    if (Number.isInteger(numericId)) setTableId(String(numericId + 1));
+    setTableId(availableTableId([...saved.zones, { id, label: id, polygon }], Number.isSafeInteger(numericId) ? numericId + 1 : 1));
+  };
+
+  const beginDrawing = () => {
+    if (editorActive) { cancelEditing(); return; }
+    const id = tableId.trim();
+    if (!id || !/^[\w-]+$/.test(id) || zones.some((zone) => zone.id === id)) {
+      setError(TEXT.cameraDuplicateZone);
+      return;
+    }
+    setError('');
+    setNotice('');
+    setDrawing(true);
+  };
+
+  const updateZone = (id: string, polygon: NormalizedPoint[]) => {
+    if (busy) return;
+    cancelEditing();
+    void persistZones(saved.zones.map((zone) => zone.id === id ? { ...zone, polygon } : zone));
   };
 
   return (
     <div className="grid gap-4 p-3 sm:p-4 lg:h-full lg:grid-cols-[minmax(0,1fr)_23rem] lg:overflow-hidden" data-testid="live-camera-page">
       <div className="flex min-h-0 min-w-0 flex-col gap-4 lg:overflow-y-auto lg:pe-1">
-        <LiveCameraStage canvasRef={canvasRef} name={saved.name} status={status} hasFrame={hasFrame} drawingEnabled={drawing && !busy} onZoneDrawn={addZone} />
+        <LiveCameraStage canvasRef={canvasRef} name={saved.name} status={status} hasFrame={hasFrame} drawingEnabled={editorActive && !busy} drawingMode={drawingMode} editingZone={editingZone} onZoneDrawn={addZone} onZoneUpdated={updateZone} onCancelDrawing={cancelEditing} />
         <section className={`${PANEL} p-4`} aria-labelledby="live-zones-title">
           <h2 id="live-zones-title" className="text-sm font-semibold">{TEXT.zoneEditor}</h2>
           <p className="mt-1 text-sm text-fg-muted">{zones.length === 0 ? TEXT.noLiveZones : TEXT.zoneEditorHint}</p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="w-32 text-xs text-fg-muted">{TEXT.tableId}
-              <input className={`${INPUT} mt-1`} value={tableId} maxLength={32} onChange={(event) => setTableId(event.target.value)} placeholder={TEXT.tableIdPlaceholder} />
+              <input className={`${INPUT} mt-1`} value={tableId} disabled={editorActive || busy} maxLength={32} onChange={(event) => setTableId(event.target.value)} placeholder={TEXT.tableIdPlaceholder} />
             </label>
-            <button type="button" className={BUTTON} disabled={!ready || busy || !hasFrame || status.state !== 'live'} onClick={() => setDrawing(!drawing)} aria-pressed={drawing}>
-              <SquareDashedMousePointer className="size-4" aria-hidden />{drawing ? TEXT.cancelDrawing : TEXT.drawZone}
+            <fieldset className="min-w-0" disabled={busy}>
+              <legend className="mb-1 text-xs text-fg-muted">{TEXT.zoneShape}</legend>
+              <div className="flex flex-wrap gap-1.5">
+                {(['polygon', 'ellipse', 'rectangle'] as const).map((mode) => (
+                  <label key={mode} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs ${drawingMode === mode ? 'border-accent bg-accent/10 text-accent' : 'border-border text-fg-muted'}`}>
+                    <input type="radio" name="zone-shape" value={mode} checked={drawingMode === mode} onChange={() => { cancelEditing(); setDrawingMode(mode); setError(''); }} className="accent-accent" />
+                    {TEXT.zoneShapes[mode]}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <button type="button" className={BUTTON} disabled={!ready || busy || !hasFrame || status.state !== 'live'} onClick={beginDrawing} aria-pressed={editorActive}>
+              <SquareDashedMousePointer className="size-4" aria-hidden />{editorActive ? TEXT.cancelDrawing : TEXT.drawZone}
             </button>
           </div>
-          {drawing && <p className="mt-2 text-sm text-accent">{TEXT.drawingHint}</p>}
+          {editorActive && <p className="mt-2 text-sm text-accent">{editingZone ? TEXT.editingZone(editingZone.label) : TEXT.drawingHints[drawingMode]}</p>}
           {zones.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2" aria-label={TEXT.savedZones}>
               {zones.map((zone) => (
                 <li key={zone.id} className="flex items-center gap-2 rounded-lg bg-surface-2 ps-3 text-sm">
                   {TEXT.table(zone.label)}
+                  <button type="button" className="rounded-lg p-2 text-fg-muted hover:text-accent disabled:opacity-50" disabled={!ready || busy || !hasFrame || status.state !== 'live'} aria-label={TEXT.editZone(zone.label)} onClick={() => { setDrawing(false); setDrawingMode('polygon'); setEditingZoneId(zone.id); setError(''); setNotice(''); }}><Pencil className="size-3.5" aria-hidden /></button>
                   <button type="button" className="rounded-lg p-2 text-fg-muted hover:text-danger disabled:opacity-50" disabled={busy} aria-label={TEXT.deleteZone(zone.label)} onClick={() => { void persistZones(saved.zones.filter((candidate) => candidate.id !== zone.id)); }}><X className="size-3.5" aria-hidden /></button>
                 </li>
               ))}

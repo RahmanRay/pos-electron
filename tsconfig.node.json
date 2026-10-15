@@ -29,6 +29,7 @@
     "src/types/**/*.ts",
     "src/config/**/*.ts",
     "src/utils/cameraOrientation.ts",
+    "src/utils/zoneGeometry.ts",
     "vite.config.ts",
     "vitest.config.ts"
   ]

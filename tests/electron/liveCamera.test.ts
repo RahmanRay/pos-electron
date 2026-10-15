@@ -5,6 +5,7 @@ import { MjpegParser } from '../../electron/main/mjpegParser';
 import { CameraFrameDispatcher } from '../../electron/frameDispatcher';
 import { buildCameraVideoFilter } from '../../electron/main/liveCameraFilter';
 import { APP_CONFIG } from '../../src/config/app.config';
+import { rotateCameraZones } from '../../src/utils/cameraOrientation';
 
 const settings = {
   name: 'Restoran', host: '192.168.72.104', port: 554, username: 'admin',
@@ -30,6 +31,42 @@ describe('camera boundary validation', () => {
     expect(() => validateCameraSettings({ ...settings, zones: [zone, zone] })).toThrow(CameraSettingsError);
     expect(() => validateCameraSettings({ ...settings, zones: [{ ...zone, polygon: [{ x: 2, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 1 }] }] })).toThrow(CameraSettingsError);
     expect(() => validateCameraSettings({ ...settings, zones: [{ ...zone, polygon: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }] }] })).toThrow(CameraSettingsError);
+  });
+
+  it('preserves sixteen-point round table zones through storage and orientation changes', () => {
+    const roundZone = {
+      id: 'round-1', label: 'Dairəvi masa',
+      polygon: Array.from({ length: 16 }, (_, index) => {
+        const angle = index * 2 * Math.PI / 16;
+        return { x: 0.5 + 0.25 * Math.cos(angle), y: 0.5 + 0.125 * Math.sin(angle) };
+      }),
+    };
+    const original = validateCameraSettings({ ...settings, zones: [roundZone] });
+    const reloaded = validateCameraSettings(JSON.parse(JSON.stringify(original)));
+    expect(reloaded.zones).toEqual([roundZone]);
+    const turned = { ...reloaded, rotation: 180, zones: rotateCameraZones(reloaded.zones) };
+    expect(validateCameraSettings(turned)).toEqual(turned);
+    expect(validateCameraSettings(JSON.parse(JSON.stringify(turned))).zones).toEqual(turned.zones);
+  });
+
+  it('accepts concave table outlines and keeps previously valid small zones', () => {
+    const concave = {
+      id: 'concave', label: 'Masa',
+      polygon: [{ x: 0.1, y: 0.1 }, { x: 0.8, y: 0.1 }, { x: 0.4, y: 0.4 }, { x: 0.8, y: 0.8 }, { x: 0.1, y: 0.8 }],
+    };
+    const small = {
+      id: 'small', label: 'Kiçik masa',
+      polygon: [{ x: 0.1, y: 0.1 }, { x: 0.104, y: 0.1 }, { x: 0.104, y: 0.104 }, { x: 0.1, y: 0.104 }],
+    };
+    expect(validateCameraSettings({ ...settings, zones: [concave, small] }).zones).toEqual([concave, small]);
+  });
+
+  it('rejects self-crossing polygons even when their signed area is nonzero and rejects duplicate vertices', () => {
+    const polygon = [{ x: 0, y: 0 }, { x: 0.8, y: 0.8 }, { x: 0, y: 0.8 }, { x: 1, y: 0 }];
+    const zone = { ...settings.zones[0], polygon };
+    expect(() => validateCameraSettings({ ...settings, zones: [zone] })).toThrow(CameraSettingsError);
+    const repeated = [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 0.5 }, { x: 0, y: 0.5 }, { x: 0.5, y: 0 }];
+    expect(() => validateCameraSettings({ ...settings, zones: [{ ...zone, polygon: repeated }] })).toThrow(CameraSettingsError);
   });
 
   it('migrates legacy orientation and table zones without applying the rotation twice after reload', () => {

@@ -1,6 +1,7 @@
 import type { CameraZone, NormalizedPoint } from '../../src/types/camera';
 import type { LiveCameraSettingsInput } from '../../src/types/liveCamera';
 import { rotateCameraZones } from '../../src/utils/cameraOrientation';
+import { isValidZonePolygon, ZONE_MAX_POINTS } from '../../src/utils/zoneGeometry';
 
 /** Errors are deliberately fixed messages: never interpolate caller input. */
 export class CameraSettingsError extends Error {}
@@ -47,9 +48,11 @@ function validateZones(value: unknown): CameraZone[] {
     const label = text(zone.label, 40);
     if (!/^[\w-]+$/.test(id) || ids.has(id)) return invalid();
     ids.add(id);
-    if (!Array.isArray(zone.polygon) || zone.polygon.length < 3 || zone.polygon.length > 16) return invalid();
+    if (!Array.isArray(zone.polygon) || zone.polygon.length < 3 || zone.polygon.length > ZONE_MAX_POINTS) return invalid();
     const polygon = zone.polygon.map(validatePoint);
-    // A line or repeated points cannot describe a useful occupancy zone.
+    // Preserve the legacy size floor for saved zones; the editor enforces a
+    // larger drawing minimum. Both reject crossing edges and duplicate points.
+    if (!isValidZonePolygon(polygon, 0)) return invalid();
     const area = polygon.reduce((sum, p, i) => {
       const next = polygon[(i + 1) % polygon.length];
       return sum + p.x * next.y - next.x * p.y;
