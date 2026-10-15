@@ -50,7 +50,8 @@ export function LiveCameraStage({ canvasRef, name, status, hasFrame, drawingEnab
   const drawZone = (zone: CameraZone) => {
     const state = snapshot.zones.find((candidate) => candidate.zoneId === zone.id);
     const style = STATUS_STYLES[state?.status ?? 'empty'];
-    const first = zone.polygon[0] ?? { x: 0, y: 0 };
+    const labelX = Math.min(...zone.polygon.map((point) => point.x));
+    const labelY = Math.min(...zone.polygon.map((point) => point.y));
     const seconds = state ? seatedSeconds(state, snapshot.time) : null;
     return (
       <g key={zone.id} opacity={reliable ? 1 : 0.45}>
@@ -62,7 +63,7 @@ export function LiveCameraStage({ canvasRef, name, status, hasFrame, drawingEnab
           vectorEffect="non-scaling-stroke"
           strokeDasharray={reliable ? undefined : '8 6'}
         />
-        <text x={first.x * FRAME_WIDTH + 9} y={first.y * FRAME_HEIGHT + 29} fontSize="24" fontWeight="700" className="fill-white stroke-black/70" paintOrder="stroke" strokeWidth="3">
+        <text x={labelX * FRAME_WIDTH + 9} y={labelY * FRAME_HEIGHT + 29} fontSize="24" fontWeight="700" className="fill-white stroke-black/70" paintOrder="stroke" strokeWidth="3">
           {zone.label}{seconds === null ? '' : ` · ${formatStopwatch(seconds)}`}
         </text>
       </g>

@@ -1,5 +1,6 @@
 import type { CameraZone, NormalizedPoint } from '../../src/types/camera';
 import type { LiveCameraSettingsInput } from '../../src/types/liveCamera';
+import { rotateCameraZones } from '../../src/utils/cameraOrientation';
 
 /** Errors are deliberately fixed messages: never interpolate caller input. */
 export class CameraSettingsError extends Error {}
@@ -73,7 +74,17 @@ export function validateCameraSettings(value: unknown): LiveCameraSettingsInput 
     if (typeof input.password !== 'string' || input.password.length > 256 || hasControlCharacters(input.password)) return invalid();
     password = input.password;
   }
-  return { name, host, port: input.port, username, streamPath, zones: validateZones(input.zones), ...(password === undefined ? {} : { password }) };
+  const legacyOrientation = !Object.hasOwn(input, 'rotation');
+  if (!legacyOrientation && input.rotation !== 0 && input.rotation !== 180) return invalid();
+  const rotation = legacyOrientation || input.rotation === 180 ? 180 : 0;
+  const zones = validateZones(input.zones);
+  // Legacy zones were drawn on the inverted stream. The explicit orientation
+  // returned here marks their migration, so subsequent saves never rotate twice.
+  return {
+    name, host, port: input.port, username, streamPath, rotation,
+    zones: legacyOrientation ? rotateCameraZones(zones) : zones,
+    ...(password === undefined ? {} : { password }),
+  };
 }
 
 export function makeRtspUrl(settings: LiveCameraSettingsInput, password: string): string {

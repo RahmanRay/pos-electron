@@ -18,7 +18,8 @@ import type {
  *   arriving → occupied when someone was there for `seatAfterSec`
  *                       (in at least `seatMinPresence` of the frames),
  *   arriving → empty    when the person is gone for `passByGapSec` (passed by),
- *   occupied → empty    when nobody was seen for `leaveAfterSec`.
+ *   occupied → empty    when nobody was seen for `leaveAfterSec` and at least
+ *                       `leaveMinMisses` fresh analysed frames found nobody.
  * While occupied, frames without a person (someone walking in front, a missed
  * detection) only mark the zone `hidden`; the seating timer keeps running.
  */
@@ -28,6 +29,8 @@ export interface OccupancyOptions {
   seatMinPresence: number;
   passByGapSec: number;
   leaveAfterSec: number;
+  /** Distinct missing observations required before confirming a departure. */
+  leaveMinMisses?: number;
   maxEvents: number;
 }
 
@@ -65,10 +68,11 @@ export function countPeopleByZone(detections: readonly PersonDetection[], zones:
 
 interface ZoneTrack extends ZoneOccupancy {
   samples: { t: number; present: boolean }[];
+  misses: number;
 }
 
 function emptyTrack(zoneId: string): ZoneTrack {
-  return { zoneId, status: 'empty', people: 0, visitStart: null, lastSeen: null, hidden: false, samples: [] };
+  return { zoneId, status: 'empty', people: 0, visitStart: null, lastSeen: null, hidden: false, samples: [], misses: 0 };
 }
 
 export interface OccupancyTracker {
@@ -84,6 +88,7 @@ export function createOccupancyTracker(
   options: OccupancyOptions,
   restored?: OccupancySnapshot,
 ): OccupancyTracker {
+  const leaveMinMisses = options.leaveMinMisses ?? 3;
   let session = restored?.session ?? 1;
   let time = restored?.time ?? 0;
   let lastTime: number | null = restored?.time ?? null;
@@ -94,7 +99,7 @@ export function createOccupancyTracker(
     // Pending arrivals cannot be confirmed across a restart. An occupied
     // visit keeps its measured duration, with fresh leave-grace on recovery.
     if (previous?.status !== 'occupied') return emptyTrack(zone.id);
-    return { ...previous, people: 0, hidden: true, lastSeen: time, samples: [] } satisfies ZoneTrack;
+    return { ...previous, people: 0, hidden: true, lastSeen: time, samples: [], misses: 0 } satisfies ZoneTrack;
   });
 
   function addEvent(kind: OccupancyEventKind, zoneId: string, at: number, duration?: number) {
@@ -105,7 +110,7 @@ export function createOccupancyTracker(
     return {
       session,
       time,
-      zones: tracks.map(({ samples: _samples, ...zone }) => ({ ...zone })),
+      zones: tracks.map(({ samples: _samples, misses: _misses, ...zone }) => ({ ...zone })),
       events,
     };
   }
@@ -124,7 +129,12 @@ export function createOccupancyTracker(
     track.people = people;
     track.samples.push({ t, present });
     track.samples = track.samples.filter((sample) => sample.t >= t - options.seatAfterSec);
-    if (present) track.lastSeen = t;
+    if (present) {
+      track.lastSeen = t;
+      track.misses = 0;
+    } else if (track.status === 'occupied') {
+      track.misses += 1;
+    }
 
     switch (track.status) {
       case 'empty':
@@ -143,7 +153,7 @@ export function createOccupancyTracker(
           break;
         }
         const presence = track.samples.filter((sample) => sample.present).length / track.samples.length;
-        if (t - visitStart >= options.seatAfterSec && presence >= options.seatMinPresence) {
+        if (present && t - visitStart >= options.seatAfterSec && presence >= options.seatMinPresence) {
           track.status = 'occupied';
           addEvent('seated', track.zoneId, t);
         }
@@ -152,7 +162,7 @@ export function createOccupancyTracker(
       case 'occupied': {
         const lastSeen = track.lastSeen ?? t;
         track.hidden = !present;
-        if (!present && t - lastSeen >= options.leaveAfterSec) {
+        if (!present && track.misses >= leaveMinMisses && t - lastSeen >= options.leaveAfterSec) {
           addEvent('left', track.zoneId, t, lastSeen - (track.visitStart ?? lastSeen));
           Object.assign(track, emptyTrack(track.zoneId));
         }

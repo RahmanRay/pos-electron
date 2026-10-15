@@ -1,7 +1,9 @@
 import type { GraphModel } from '@tensorflow/tfjs-converter';
 import type * as TfCore from '@tensorflow/tfjs-core';
 import { APP_CONFIG } from '@/config/app.config';
-import type { PersonDetection } from '@/types';
+import type { CameraZone, PersonDetection } from '@/types';
+import { detectionRegions, mapRegionDetection, mergePersonDetections } from '@/utils/personDetection';
+import { detectionAnchor, pointInPolygon } from '@/utils/occupancy';
 
 /*
  * Person detector for camera frames: COCO-SSD (MobileNet v2) run with
@@ -12,7 +14,7 @@ import type { PersonDetection } from '@/types';
  */
 
 export interface PersonDetector {
-  detect(source: HTMLCanvasElement): Promise<PersonDetection[]>;
+  detect(source: HTMLCanvasElement, zones?: readonly CameraZone[]): Promise<PersonDetection[]>;
   dispose(): void;
 }
 
@@ -62,7 +64,7 @@ export async function loadPersonDetector(): Promise<PersonDetector> {
   const model: GraphModel = await converter.loadGraphModel(modelUrl, { fetchFunc: fileFetch });
   const { maxDetections, minScore } = APP_CONFIG.camera;
 
-  async function detect(source: HTMLCanvasElement): Promise<PersonDetection[]> {
+  async function predict(source: HTMLCanvasElement): Promise<PersonDetection[]> {
     const width = source.width;
     const height = source.height;
     if (!width || !height) return [];
@@ -98,6 +100,42 @@ export async function loadPersonDetector(): Promise<PersonDetector> {
       keep?.dispose();
     }
   }
+
+  const cropCanvas = document.createElement('canvas');
+  const cropContext = cropCanvas.getContext('2d', { alpha: false });
+  if (!cropContext) {
+    model.dispose();
+    throw new Error('Detection canvas unavailable');
+  }
+
+  const detect = async (source: HTMLCanvasElement, zones: readonly CameraZone[] = []): Promise<PersonDetection[]> => {
+    if (!source.width || !source.height) return [];
+    const people: PersonDetection[] = [];
+    // SSD internally shrinks every input to 300×300. Separate table crops give
+    // distant / partly occluded seated people enough pixels, even when still.
+    // All crops read the same immutable snapshot; no movement test is involved.
+    for (const region of detectionRegions(zones, source.width, source.height)) {
+      const sourceWidth = region.width * source.width;
+      const sourceHeight = region.height * source.height;
+      const scale = Math.min(1, APP_CONFIG.camera.detectMaxWidth / sourceWidth);
+      const width = Math.max(1, Math.round(sourceWidth * scale));
+      const height = Math.max(1, Math.round(sourceHeight * scale));
+      if (cropCanvas.width !== width || cropCanvas.height !== height) {
+        cropCanvas.width = width;
+        cropCanvas.height = height;
+      }
+      cropContext.drawImage(source, region.x * source.width, region.y * source.height, sourceWidth, sourceHeight, 0, 0, width, height);
+      const detections = await predict(cropCanvas);
+      const zone = region.zoneId ? zones.find((candidate) => candidate.id === region.zoneId) : undefined;
+      for (const detection of detections) {
+        const mapped = mapRegionDetection(detection, region);
+        // Padding may include a neighbour. It must not invent occupancy in this
+        // crop's table or duplicate people from other table areas.
+        if (!zone || pointInPolygon(detectionAnchor(mapped), zone.polygon)) people.push(mapped);
+      }
+    }
+    return mergePersonDetections(people, maxDetections, zones);
+  };
 
   return {
     detect,

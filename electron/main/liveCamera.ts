@@ -7,8 +7,8 @@ import { CAMERA_IPC, type LiveCameraSettings, type LiveCameraSettingsInput, type
 import { isAppUrl } from './security';
 import { getMainWindow } from './windowManager';
 import { CameraSettingsError, classifyCameraFailure, makeRtspUrl, validateCameraSettings } from './liveCameraValidation';
+import { buildCameraVideoFilter } from './liveCameraFilter';
 import { MjpegParser } from './mjpegParser';
-import { APP_CONFIG } from '../../src/config/app.config';
 
 interface StoredCamera {
   version: 1;
@@ -101,7 +101,7 @@ class LiveCameraService {
     }
     const identityChanged = !this.stored || password || this.stored.settings.host !== settings.host ||
       this.stored.settings.port !== settings.port || this.stored.settings.username !== settings.username ||
-      this.stored.settings.streamPath !== settings.streamPath;
+      this.stored.settings.streamPath !== settings.streamPath || this.stored.settings.rotation !== settings.rotation;
     if (identityChanged) this.disconnect();
     this.stored = stored;
     return { ...settings, hasPassword: true };
@@ -205,7 +205,7 @@ class LiveCameraService {
       '-hide_banner', '-loglevel', 'error', '-nostdin',
       '-rtsp_transport', 'tcp', '-timeout', '10000000',
       '-i', inputUrl, '-map', '0:v:0', '-an', '-sn', '-dn',
-      '-vf', `fps=${APP_CONFIG.camera.previewFps},scale=1280:720:force_original_aspect_ratio=decrease`,
+      '-vf', buildCameraVideoFilter(this.stored.settings.rotation),
       '-threads', '2', '-c:v', 'mjpeg', '-q:v', '5',
       '-f', 'image2pipe', 'pipe:1',
     ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, shell: false });

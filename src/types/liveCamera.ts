@@ -1,5 +1,7 @@
 import type { CameraZone } from './camera';
 
+export type CameraRotation = 0 | 180;
+
 /** Public settings never include the password or its encrypted representation. */
 export interface LiveCameraSettings {
   name: string;
@@ -7,6 +9,7 @@ export interface LiveCameraSettings {
   port: number;
   username: string;
   streamPath: string;
+  rotation: CameraRotation;
   hasPassword: boolean;
   zones: CameraZone[];
 }

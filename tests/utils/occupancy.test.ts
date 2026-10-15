@@ -16,6 +16,7 @@ const OPTIONS: OccupancyOptions = {
   leaveAfterSec: 2,
   maxEvents: 40,
 };
+const LIVE_OPTIONS: OccupancyOptions = { ...OPTIONS, passByGapSec: 2, leaveAfterSec: 6 };
 
 const square = (x0: number, y0: number, x1: number, y1: number) => [
   { x: x0, y: y0 },
@@ -105,6 +106,90 @@ describe('occupancy tracker', () => {
     const snapshot = feed(tracker, 3.25, 5, []);
     expect(zone(snapshot, 'a').status).toBe('empty');
     expect(snapshot.events.at(-1)).toMatchObject({ kind: 'left', zoneId: 'a', at: 5, duration: 3 });
+  });
+
+  it('keeps a stationary person seated without requiring box movement', () => {
+    const tracker = createOccupancyTracker(ZONES, LIVE_OPTIONS);
+    const snapshot = feed(tracker, 0, 60, [IN_A]);
+    expect(zone(snapshot, 'a')).toMatchObject({ status: 'occupied', hidden: false, visitStart: 0, lastSeen: 60 });
+    expect(seatedSeconds(zone(snapshot, 'a'), snapshot.time)).toBe(60);
+    expect(snapshot.events.map((event) => event.kind)).toEqual(['seated']);
+  });
+
+  it('survives repeated detection gaps and resets departure evidence when the person returns', () => {
+    const tracker = createOccupancyTracker(ZONES, LIVE_OPTIONS);
+    feed(tracker, 0, 3, [IN_A]);
+    let snapshot = feed(tracker, 3.25, 6, []);
+    expect(zone(snapshot, 'a')).toMatchObject({ status: 'occupied', hidden: true, visitStart: 0 });
+    snapshot = tracker.update(6.25, [IN_A]);
+    expect(zone(snapshot, 'a')).toMatchObject({ status: 'occupied', hidden: false, visitStart: 0 });
+    snapshot = feed(tracker, 6.5, 9.25, []);
+    expect(zone(snapshot, 'a')).toMatchObject({ status: 'occupied', hidden: true, visitStart: 0 });
+    snapshot = tracker.update(9.5, [IN_A]);
+    expect(seatedSeconds(zone(snapshot, 'a'), snapshot.time)).toBe(9.5);
+    expect(snapshot.events.map((event) => event.kind)).toEqual(['seated']);
+  });
+
+  it('confirms a real departure after six observed seconds and multiple empty frames', () => {
+    const tracker = createOccupancyTracker(ZONES, LIVE_OPTIONS);
+    feed(tracker, 0, 3, [IN_A]);
+    const pending = feed(tracker, 3.25, 8.75, []);
+    expect(zone(pending, 'a')).toMatchObject({ status: 'occupied', hidden: true });
+    const departed = tracker.update(9, []);
+    expect(zone(departed, 'a')).toMatchObject({ status: 'empty', visitStart: null });
+    expect(departed.events.at(-1)).toMatchObject({ kind: 'left', zoneId: 'a', at: 9, duration: 3 });
+    expect(feed(tracker, 9.25, 12, []).events.filter((event) => event.kind === 'left')).toHaveLength(1);
+  });
+
+  it('requires three fresh misses after a long inference gap and ignores repeated or jittered frames', () => {
+    const tracker = createOccupancyTracker(ZONES, LIVE_OPTIONS);
+    feed(tracker, 0, 3, [IN_A]);
+    expect(zone(tracker.update(100, []), 'a').status).toBe('occupied');
+    tracker.update(100, []);
+    tracker.update(99.9, []);
+    expect(zone(tracker.update(100.25, []), 'a').status).toBe('occupied');
+    expect(zone(tracker.update(100.5, []), 'a').status).toBe('empty');
+  });
+
+  it('clears old negative observations when a fresh person is seen', () => {
+    const tracker = createOccupancyTracker(ZONES, LIVE_OPTIONS);
+    feed(tracker, 0, 3, [IN_A]);
+    tracker.update(10, []);
+    tracker.update(10.25, []);
+    tracker.update(10.5, [IN_A]);
+    expect(zone(tracker.update(20, []), 'a').status).toBe('occupied');
+    expect(zone(tracker.update(20.25, []), 'a').status).toBe('occupied');
+    expect(zone(tracker.update(20.5, []), 'a').status).toBe('empty');
+  });
+
+  it('honors an explicitly configured minimum number of missed observations', () => {
+    const tracker = createOccupancyTracker(ZONES, { ...LIVE_OPTIONS, leaveMinMisses: 5 });
+    feed(tracker, 0, 3, [IN_A]);
+    expect(zone(feed(tracker, 10, 10.75, []), 'a').status).toBe('occupied');
+    expect(zone(tracker.update(11, []), 'a').status).toBe('empty');
+  });
+
+  it('keeps an arrival through a detection gap but still requires renewed positive evidence', () => {
+    const tracker = createOccupancyTracker(ZONES, LIVE_OPTIONS);
+    feed(tracker, 0, 0.75, [IN_A]);
+    const missing = feed(tracker, 1, 2, []);
+    expect(zone(missing, 'a')).toMatchObject({ status: 'arriving', visitStart: 0 });
+    expect(missing.events).toEqual([]);
+    expect(zone(tracker.update(2.25, [IN_A]), 'a').status).toBe('arriving');
+    const returned = feed(tracker, 2.5, 3.25, [IN_A]);
+    expect(zone(returned, 'a')).toMatchObject({ status: 'occupied', visitStart: 0 });
+    expect(returned.events.map((event) => event.kind)).toEqual(['seated']);
+  });
+
+  it('never confirms seating on an empty frame despite a strong recent presence ratio', () => {
+    const tracker = createOccupancyTracker(ZONES, LIVE_OPTIONS);
+    feed(tracker, 0, 1.25, [IN_A]);
+    const missing = tracker.update(1.5, []);
+    expect(zone(missing, 'a').status).toBe('arriving');
+    expect(missing.events).toEqual([]);
+    const returned = tracker.update(1.75, [IN_A]);
+    expect(zone(returned, 'a')).toMatchObject({ status: 'occupied', visitStart: 0 });
+    expect(returned.events.map((event) => event.kind)).toEqual(['seated']);
   });
 
   it('starts a new, empty session when the video loops', () => {

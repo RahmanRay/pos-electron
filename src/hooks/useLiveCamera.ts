@@ -17,7 +17,7 @@ export function useLiveCamera(canvasRef: RefObject<HTMLCanvasElement | null>) {
     const camera = useCameraStore.getState;
     const context = canvas.getContext('2d');
     if (!context) return;
-    // Detection uses its own small snapshot; the visible canvas keeps drawing at
+    // Detection uses its own stable snapshot; the visible canvas keeps drawing at
     // the stream's frame rate while TensorFlow works on a stable input image.
     const analysisCanvas = document.createElement('canvas');
     const analysisContext = analysisCanvas.getContext('2d', { alpha: false });
@@ -127,7 +127,8 @@ export function useLiveCamera(canvasRef: RefObject<HTMLCanvasElement | null>) {
           let inferenceFailed = false;
           if (transport.state === 'live' && frameAt > 0 && frameAt !== lastAnalysed) {
             try {
-              const scale = Math.min(1, APP_CONFIG.camera.detectMaxWidth / canvas.width);
+              const zones = camera().zones;
+              const scale = Math.min(1, APP_CONFIG.camera.snapshotMaxWidth / canvas.width);
               const width = Math.max(1, Math.round(canvas.width * scale));
               const height = Math.max(1, Math.round(canvas.height * scale));
               if (analysisCanvas.width !== width || analysisCanvas.height !== height) {
@@ -135,8 +136,9 @@ export function useLiveCamera(canvasRef: RefObject<HTMLCanvasElement | null>) {
                 analysisCanvas.height = height;
               }
               analysisContext.drawImage(canvas, 0, 0, width, height);
-              const people = await detector.detect(analysisCanvas);
-              if (!disposed && transport.state === 'live' && frameGeneration === generation && frameAt > lastAnalysed) {
+              const people = await detector.detect(analysisCanvas, zones);
+              // A zone edit during a crop pass invalidates that whole observation.
+              if (!disposed && transport.state === 'live' && frameGeneration === generation && zones === camera().zones && frameAt > lastAnalysed) {
                 camera().setDetector('ready');
                 camera().applyLiveFrame(frameAt / 1000, people, performance.now() - startedAt);
                 lastAnalysed = frameAt;

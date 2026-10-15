@@ -5,6 +5,7 @@ import { useCameraStore } from '@/store/cameraStore';
 import { TEXT } from '@/text';
 import type { CameraZone, NormalizedPoint } from '@/types';
 import type { LiveCameraSettings, LiveCameraSettingsInput } from '@/types/liveCamera';
+import { rotateCameraZones } from '@/utils/cameraOrientation';
 import { EventFeed } from './EventFeed';
 import { LiveCameraStage } from './LiveCameraStage';
 import { OccupancyGauge } from './OccupancyGauge';
@@ -13,13 +14,13 @@ import { PANEL } from './visuals';
 
 const DEFAULT_SETTINGS: LiveCameraSettings = {
   name: 'EZVIZ H6c', host: '192.168.72.104', port: 554,
-  username: 'admin', streamPath: '/h264/ch1/main/av_stream', hasPassword: false, zones: [],
+  username: 'admin', streamPath: '/h264/ch1/main/av_stream', rotation: 180, hasPassword: false, zones: [],
 };
 const INPUT = 'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg outline-none focus:border-accent';
 const BUTTON = 'inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold transition-colors hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-50';
 
 function configure(settings: LiveCameraSettings) {
-  useCameraStore.getState().configureLive(settings.zones, `${settings.host}:${settings.port}${settings.streamPath}`);
+  useCameraStore.getState().configureLive(settings.zones, `${settings.host}:${settings.port}${settings.streamPath}|rotation=${settings.rotation}`);
 }
 
 export function LiveCameraPage() {
@@ -66,10 +67,13 @@ export function LiveCameraPage() {
     setBusy(true);
     setError('');
     setNotice('');
+    setDrawing(false);
     try {
+      const orientationChanged = draft.rotation !== saved.rotation;
       const input: LiveCameraSettingsInput = {
         name: draft.name.trim(), host: draft.host.trim(), port: Number(draft.port),
-        username: draft.username.trim(), streamPath: draft.streamPath.trim(), zones: saved.zones,
+        username: draft.username.trim(), streamPath: draft.streamPath.trim(), rotation: draft.rotation,
+        zones: orientationChanged ? rotateCameraZones(saved.zones) : saved.zones,
       };
       if (password) input.password = password;
       const settings = await api.saveSettings(input);
@@ -79,7 +83,7 @@ export function LiveCameraPage() {
       setPassword('');
       configure(settings);
       setNotice(TEXT.cameraSettingsSaved);
-      if (connect) await api.connect();
+      if (connect || (orientationChanged && status.state !== 'idle')) await api.connect();
     } catch {
       if (mounted.current) setError(TEXT.cameraActionError);
     } finally {
@@ -109,7 +113,7 @@ export function LiveCameraPage() {
     try {
       const settings = await api.saveSettings({
         name: saved.name, host: saved.host, port: saved.port, username: saved.username,
-        streamPath: saved.streamPath, zones: nextZones,
+        streamPath: saved.streamPath, rotation: saved.rotation, zones: nextZones,
       });
       if (!mounted.current) return;
       setSaved(settings);
@@ -192,6 +196,10 @@ export function LiveCameraPage() {
             <p className="text-xs text-fg-subtle">{TEXT.cameraPasswordHint}</p>
             <label className="block text-xs text-fg-muted">{TEXT.cameraFields.streamPath}
               <input className={`${INPUT} mt-1 font-mono`} name="camera-stream-path" value={draft.streamPath} required onChange={(event) => updateDraft('streamPath', event.target.value)} />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-fg">
+              <input type="checkbox" name="camera-rotate" checked={draft.rotation === 180} onChange={(event) => updateDraft('rotation', event.target.checked ? 180 : 0)} className="size-4 accent-accent" />
+              {TEXT.cameraRotate}
             </label>
             <div className="flex flex-wrap gap-2 pt-1">
               <button className={`${BUTTON} border-accent/40 bg-accent text-accent-fg hover:bg-accent-strong`} type="submit" disabled={!ready || busy}><Link className="size-4" aria-hidden />{busy ? TEXT.waiting : TEXT.cameraConnect}</button>

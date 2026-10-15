@@ -24,8 +24,8 @@ interface CameraState {
   applyLiveFrame: (wallClockSeconds: number, detections: PersonDetection[], inferenceMs: number) => void;
 }
 
-const { seatAfterSec, seatMinPresence, passByGapSec, leaveAfterSec, maxEvents } = APP_CONFIG.camera;
-const options = { seatAfterSec, seatMinPresence, passByGapSec, leaveAfterSec, maxEvents };
+const { seatAfterSec, seatMinPresence, passByGapSec, leaveAfterSec, leaveMinMisses, maxEvents } = APP_CONFIG.camera;
+const options = { seatAfterSec, seatMinPresence, passByGapSec, leaveAfterSec, leaveMinMisses, maxEvents };
 let tracker = createOccupancyTracker([], options);
 let liveSignature = '';
 let lastLiveFrameAt: number | null = null;

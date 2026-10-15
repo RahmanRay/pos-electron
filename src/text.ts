@@ -31,6 +31,7 @@ export const TEXT = {
   cameraSave: 'Saxla',
   cameraConnect: 'Saxla və qoşul',
   cameraDisconnect: 'Ayır',
+  cameraRotate: 'Görüntünü 180° çevir',
   waiting: 'Gözləyin…',
   liveImage: 'Kameradan alınan canlı görüntü',
   tableId: 'Masa ID-si',
@@ -75,7 +76,7 @@ export const TEXT = {
   peopleInFrame: 'Kadrda',
   inference: 'Aşkarlama',
   tables: 'Masalar',
-  hidden: 'Görünmür: qısa örtülmə?',
+  hidden: 'İnsan görünmür; doluluq yenidən yoxlanılır.',
   events: 'Hadisələr',
   noEvents: 'Hələ hadisə yoxdur.',
   event: (kind: OccupancyEventKind, label: string, duration: string) =>

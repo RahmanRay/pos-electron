@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { CameraSettingsError, classifyCameraFailure, isPrivateCameraHost, makeRtspUrl, validateCameraSettings } from '../../electron/main/liveCameraValidation';
 import { MjpegParser } from '../../electron/main/mjpegParser';
 import { CameraFrameDispatcher } from '../../electron/frameDispatcher';
+import { buildCameraVideoFilter } from '../../electron/main/liveCameraFilter';
+import { APP_CONFIG } from '../../src/config/app.config';
 
 const settings = {
   name: 'Restoran', host: '192.168.72.104', port: 554, username: 'admin',
-  streamPath: '/ch1/main', password: 'TEST_PASSWORD',
+  streamPath: '/ch1/main', password: 'TEST_PASSWORD', rotation: 0 as const,
   zones: [{ id: 'table-1', label: 'Masa 1', polygon: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 0.5 }] }],
 };
 
@@ -30,6 +32,28 @@ describe('camera boundary validation', () => {
     expect(() => validateCameraSettings({ ...settings, zones: [{ ...zone, polygon: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }] }] })).toThrow(CameraSettingsError);
   });
 
+  it('migrates legacy orientation and table zones without applying the rotation twice after reload', () => {
+    const { rotation: _rotation, ...legacy } = settings;
+    const migrated = validateCameraSettings(legacy);
+    expect(migrated.rotation).toBe(180);
+    expect(migrated.zones).toEqual([{
+      ...settings.zones[0],
+      polygon: [{ x: 1, y: 1 }, { x: 0.5, y: 1 }, { x: 0.5, y: 0.5 }],
+    }]);
+    const reloaded = validateCameraSettings(JSON.parse(JSON.stringify(migrated)));
+    expect(reloaded).toEqual(migrated);
+    expect(legacy.zones[0]?.polygon).toEqual([{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0.5, y: 0.5 }]);
+  });
+
+  it('keeps calibrated zones for explicit orientations and rejects unsupported rotations', () => {
+    for (const rotation of [0, 180]) {
+      expect(validateCameraSettings({ ...settings, rotation })).toEqual({ ...settings, rotation });
+    }
+    for (const rotation of [-180, 90, 360, '180', null, undefined, NaN]) {
+      expect(() => validateCameraSettings({ ...settings, rotation })).toThrow(CameraSettingsError);
+    }
+  });
+
   it('does not place credentials or raw diagnostics into errors', () => {
     for (const diagnostic of ['Unauthorized 401 rtsp://admin:DO_NOT_EXPOSE@192.168.72.104', '404 secret=DO_NOT_EXPOSE', 'connect failed password=DO_NOT_EXPOSE']) {
       const message = classifyCameraFailure(diagnostic);
@@ -45,6 +69,14 @@ describe('camera boundary validation', () => {
 
   it('escapes authentication characters when constructing the main-only URL', () => {
     expect(makeRtspUrl(settings, 'a:@/b')).toBe('rtsp://admin:a%3A%40%2Fb@192.168.72.104:554/ch1/main');
+  });
+});
+
+describe('camera image orientation', () => {
+  it('turns the decoded pixels by 180 degrees before delivering the live frame', () => {
+    const scale = 'scale=1280:720:force_original_aspect_ratio=decrease';
+    expect(buildCameraVideoFilter(180)).toBe(`fps=${APP_CONFIG.camera.previewFps},hflip,vflip,${scale}`);
+    expect(buildCameraVideoFilter(0)).toBe(`fps=${APP_CONFIG.camera.previewFps},${scale}`);
   });
 });
 
